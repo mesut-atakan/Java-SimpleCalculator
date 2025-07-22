@@ -2,15 +2,18 @@ package com.aventra.calculator;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
+
+    private final static String FIRST_NUMBER_SAVE_KEY = "firstNumber";
+    private final static String SECOND_NUMBER_SAVE_KEY = "secondNumber";
 
     TextView _resultTextView;
     EditText _firstEditText;
@@ -21,6 +24,8 @@ public class MainActivity extends AppCompatActivity {
     Button _btnDivision;
     CalculatorService _calculatorService;
 
+    StorageManager storageManager;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -29,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
         _calculatorService = new CalculatorService();
 
         _btnAddition = findViewById(R.id.btnAddition);
-        _btnSubstraction = findViewById(R.id.btnSubstraction);
+        _btnSubstraction = findViewById(R.id.btnSubtraction);
         _btnMultiplaction = findViewById(R.id.btnMultiplication);
         _btnDivision = findViewById(R.id.btnDivision);
         _firstEditText = findViewById(R.id.etFirstNumber);
@@ -41,48 +46,83 @@ public class MainActivity extends AppCompatActivity {
         _btnMultiplaction.setOnClickListener(operationClickListener);
         _btnDivision.setOnClickListener(operationClickListener);
 
+        // Mode private -> Bu veriye sadece benim uygulamamdan ulasilabilsin.
 
+        storageManager = new StorageManager(MainActivity.this);
 
+        load();
     }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        save();
+    }
+
     View.OnClickListener operationClickListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            if (_firstEditText.getText().toString().equals("") || _secondEditText.getText().toString().equals("")){
-                Toast.makeText(MainActivity.this, "Deger Giriniz!", Toast.LENGTH_SHORT).show();
+
+            if (!InputHandler.hasValidInputs(_firstEditText, _secondEditText)){
+                UIHelper.showToast(MainActivity.this, "Deger Giriniz!");
                 return;
             }
 
-            int a = GetInputA(); // EditText’ten veri alma fonksiyonun olmalı
-            int b = GetInputB();
+            int a = InputHandler.parseInput(_firstEditText); // EditText’ten veri alma fonksiyonun olmalı
+            int b = InputHandler.parseInput(_secondEditText);
             int result = 0;
 
             int id = v.getId();
 
             if (id == R.id.btnAddition) {
-                result = _calculatorService.Add(a, b);
-            } else if (id == R.id.btnSubstraction) {
-                result = _calculatorService.Sub(a, b);
+                result = _calculatorService.add(a, b);
+            } else if (id == R.id.btnSubtraction) {
+                result = _calculatorService.sub(a, b);
             } else if (id == R.id.btnMultiplication) {
-                result = _calculatorService.Mul(a, b);
+                result = _calculatorService.mul(a, b);
             } else if (id == R.id.btnDivision) {
-                result = _calculatorService.Div(a, b);
+                result = _calculatorService.div(a, b);
             }
 
-            ShowResult(result); // Sonucu TextView’e yazdıran fonksiyon
-            Toast.makeText(MainActivity.this, "DENEME", Toast.LENGTH_SHORT).show();
+            showResult(result); // Sonucu TextView’e yazdıran fonksiyon
         }
     };
-    private int GetInputA()
+
+    private void save()
     {
-        return Integer.parseInt(_firstEditText.getText().toString());
+        if (InputHandler.hasValidInput(_firstEditText)){
+            // SAVE Data
+            storageManager.save(FIRST_NUMBER_SAVE_KEY, InputHandler.parseInput(_firstEditText));
+        }
+        else if (storageManager.has(FIRST_NUMBER_SAVE_KEY)){
+            // Delete Data
+            storageManager.remove(FIRST_NUMBER_SAVE_KEY);
+        }
+
+        if (InputHandler.hasValidInput(_secondEditText)){
+            // SAVE Data
+            storageManager.save(SECOND_NUMBER_SAVE_KEY, InputHandler.parseInput(_secondEditText));
+        }
+        else if (storageManager.has(SECOND_NUMBER_SAVE_KEY)){
+            // Delete Data
+            storageManager.remove(SECOND_NUMBER_SAVE_KEY);
+        }
     }
 
-    private int GetInputB()
-    {
-        return  Integer.parseInt(_secondEditText.getText().toString());
+    private void load(){
+        int aInputLoad = storageManager.load(FIRST_NUMBER_SAVE_KEY);
+        int bInputLoad = storageManager.load(SECOND_NUMBER_SAVE_KEY);
+
+        if (aInputLoad != 0){
+            _firstEditText.setText(String.valueOf(aInputLoad));
+        }
+
+        if (bInputLoad != 0){
+            _secondEditText.setText(String.valueOf(bInputLoad));
+        }
     }
 
-    private void ShowResult(int result){
+    private void showResult(int result){
         _resultTextView.setText("Result = " + result);
     }
 }
